@@ -1,0 +1,47 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Outer Golden Circle -->
+    <path
+        android:fillColor="#F1C40F"
+        android:pathData="M24,2A22,22 0,1,0 46,24,22,22 0,0,0 24,2Z"/>
+    <!-- Inner Navy Circle -->
+    <path
+        android:fillColor="#1E3C72"
+        android:pathData="M24,5A19,19 0,1,0 43,24,19,19 0,0,0 24,5Z"/>
+    <!-- Golden Inner Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F1C40F"
+        android:strokeWidth="1.2"
+        android:pathData="M24,7A17,17 0,1,0 41,24,17,17 0,0,0 24,7Z"/>
+    <!-- Graduation Cap / Mortarboard -->
+    <path
+        android:fillColor="#F1C40F"
+        android:pathData="M24,12L12,18L24,24L36,18Z"/>
+    <!-- Mortarboard Under Base -->
+    <path
+        android:fillColor="#F39C12"
+        android:pathData="M16,20.5V25.5C16,28 19.5,30 24,30C28.5,30 32,28 32,25.5V20.5L24,24.5Z"/>
+    <!-- Tassel -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F1C40F"
+        android:strokeWidth="1.5"
+        android:pathData="M33,19.5V26.5"/>
+    <path
+        android:fillColor="#F1C40F"
+        android:pathData="M31.5,26.5H34.5V29H31.5Z"/>
+    <!-- Open Book at the bottom -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M24,32C21.5,30.5 17.5,30.5 14,31.5V38.5C17.5,37.5 21.5,37.5 24,39C26.5,37.5 30.5,37.5 34,38.5V31.5C30.5,30.5 26.5,30.5 24,32Z"/>
+    <!-- Book Center Divider -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#1E3C72"
+        android:strokeWidth="1"
+        android:pathData="M24,32.2V39"/>
+</vector>
