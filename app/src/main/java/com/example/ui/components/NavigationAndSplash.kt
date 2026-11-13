@@ -28,11 +28,13 @@ import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ReportProblem
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Assessment
 import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.ReportProblem
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -53,7 +55,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.AppLanguage
 import com.example.ui.AppScreen
+import com.example.ui.AppStrings
+import com.example.ui.AppStringsCatalog
 import com.example.ui.theme.Gold500
 import com.example.ui.theme.Navy800
 import com.example.ui.theme.Navy900
@@ -73,35 +78,43 @@ private data class TelegramNavItem(
 fun TelegramBottomBar(
   currentScreen: AppScreen,
   isDarkMode: Boolean,
+  appStrings: AppStrings = AppStringsCatalog.forLanguage(AppLanguage.TJ),
   onSelectScreen: (AppScreen) -> Unit,
   modifier: Modifier = Modifier
 ) {
-  val items = remember {
+  val items = remember(appStrings) {
     listOf(
       TelegramNavItem(
         screen = AppScreen.HOME,
-        label = "Асосӣ",
+        label = appStrings.navHome,
         selectedIcon = Icons.Filled.Home,
         unselectedIcon = Icons.Outlined.Home,
         testTag = "nav_item_home"
       ),
       TelegramNavItem(
         screen = AppScreen.ATTENDANCE,
-        label = "Журнал",
+        label = appStrings.navJournal,
         selectedIcon = Icons.Filled.Assignment,
         unselectedIcon = Icons.Outlined.Assignment,
         testTag = "nav_item_attendance"
       ),
       TelegramNavItem(
+        screen = AppScreen.DISCIPLINE,
+        label = appStrings.navDiscipline,
+        selectedIcon = Icons.Filled.ReportProblem,
+        unselectedIcon = Icons.Outlined.ReportProblem,
+        testTag = "nav_item_discipline"
+      ),
+      TelegramNavItem(
         screen = AppScreen.REPORTS,
-        label = "Ҳисобот",
+        label = appStrings.navReports,
         selectedIcon = Icons.Filled.Assessment,
         unselectedIcon = Icons.Outlined.Assessment,
         testTag = "nav_item_reports"
       ),
       TelegramNavItem(
         screen = AppScreen.SETTINGS,
-        label = "Танзимот",
+        label = appStrings.navSettings,
         selectedIcon = Icons.Filled.Settings,
         unselectedIcon = Icons.Outlined.Settings,
         testTag = "nav_item_settings"

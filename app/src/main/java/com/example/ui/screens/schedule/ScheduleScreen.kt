@@ -82,7 +82,7 @@ fun ScheduleScreen(
   onAdjustPeriods: (dayIdx: Int, amount: Int) -> Unit,
   onCopyFromClass: (sourceClassId: String, sourceClassName: String) -> Unit,
   onCopyDayToDay: (fromDayIdx: Int, toDayIdx: Int) -> Unit,
-  onSaveTeacherLesson: (dayOfWeek: Int, period: Int, isFree: Boolean, className: String, subject: String, note: String) -> Unit = { _, _, _, _, _, _ -> },
+  onSaveTeacherLesson: (dayOfWeek: Int, period: Int, isFree: Boolean, className: String, subject: String, shortSubject: String, note: String) -> Unit = { _, _, _, _, _, _, _ -> },
   onDeleteTeacherLesson: (lessonId: String) -> Unit = {},
   onSetTeacherPeriodFree: (dayOfWeek: Int, period: Int) -> Unit = { _, _ -> },
   modifier: Modifier = Modifier
@@ -449,8 +449,8 @@ fun ScheduleScreen(
           showTeacherEditDialog = false
           editingTeacherLesson = null
         },
-        onSave = { isFree, className, subject, note ->
-          onSaveTeacherLesson(selectedDayIdx, editingPeriodNum, isFree, className, subject, note)
+        onSave = { isFree, className, subject, shortSubject, note ->
+          onSaveTeacherLesson(selectedDayIdx, editingPeriodNum, isFree, className, subject, shortSubject, note)
           showTeacherEditDialog = false
           editingTeacherLesson = null
         }
@@ -799,12 +799,33 @@ private fun TeacherPeriodCard(
               )
             }
             hasLesson -> {
-              Text(
-                text = lesson?.subject ?: "",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = if (isDarkMode) Color.White else Navy900
-              )
+              Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+              ) {
+                Text(
+                  text = lesson?.subject ?: "",
+                  fontSize = 14.sp,
+                  fontWeight = FontWeight.ExtraBold,
+                  color = if (isDarkMode) Color.White else Navy900
+                )
+                val badgeShort = lesson?.shortSubject?.takeIf { it.isNotBlank() }
+                if (badgeShort != null) {
+                  Box(
+                    modifier = Modifier
+                      .clip(RoundedCornerShape(4.dp))
+                      .background(Gold500.copy(alpha = 0.25f))
+                      .padding(horizontal = 5.dp, vertical = 1.dp)
+                  ) {
+                    Text(
+                      text = badgeShort,
+                      fontSize = 10.5.sp,
+                      fontWeight = FontWeight.Black,
+                      color = if (isDarkMode) Gold500 else Navy900
+                    )
+                  }
+                }
+              }
               Box(
                 modifier = Modifier
                   .clip(RoundedCornerShape(4.dp))
@@ -904,7 +925,7 @@ fun TeacherLessonEditDialog(
   allKnownSubjects: List<String>,
   isDarkMode: Boolean,
   onDismiss: () -> Unit,
-  onSave: (isFree: Boolean, className: String, subject: String, note: String) -> Unit
+  onSave: (isFree: Boolean, className: String, subject: String, shortSubject: String, note: String) -> Unit
 ) {
   var isFree by remember { mutableStateOf(initialLesson?.isFreePeriod ?: false) }
   var selectedClass by remember {
@@ -920,6 +941,16 @@ fun TeacherLessonEditDialog(
   var subjectText by remember {
     val initSubj = initialLesson?.subject?.takeIf { it.isNotBlank() && it != "Соати озод" }
     mutableStateOf(initSubj ?: "Алгебра")
+  }
+  var shortSubjectText by remember {
+    val initShort = initialLesson?.shortSubject?.takeIf { it.isNotBlank() }
+      ?: when {
+        subjectText.equals("Алгебра", ignoreCase = true) -> "А"
+        subjectText.equals("Геометрия", ignoreCase = true) -> "Г"
+        subjectText.contains("тарбияв", ignoreCase = true) -> "С.Т"
+        else -> subjectText.take(3).uppercase()
+      }
+    mutableStateOf(initShort)
   }
 
   AlertDialog(
@@ -1036,7 +1067,10 @@ fun TeacherLessonEditDialog(
                     color = if (isSelectedSubj) Gold500 else Color(0xFFCBD5E1),
                     shape = RoundedCornerShape(8.dp)
                   )
-                  .clickable { subjectText = fullSubj }
+                  .clickable {
+                    subjectText = fullSubj
+                    shortSubjectText = shortCode
+                  }
                   .padding(horizontal = 12.dp, vertical = 10.dp)
               ) {
                 Row(
@@ -1066,6 +1100,54 @@ fun TeacherLessonEditDialog(
                 }
               }
             }
+          }
+
+          // 2 Custom Input Fields: 1) Номи фан  2) Шакли кӯтоҳ (2-3 ҳарф)
+          Text(
+            text = "Ё фанни дигарро ворид кунед:",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+          )
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            OutlinedTextField(
+              value = subjectText,
+              onValueChange = { newVal ->
+                subjectText = newVal
+                val preset = allowedSubjects.find { it.first.equals(newVal.trim(), ignoreCase = true) }
+                if (preset != null) {
+                  shortSubjectText = preset.second
+                } else if (shortSubjectText.isBlank() || allowedSubjects.any { it.second == shortSubjectText }) {
+                  shortSubjectText = newVal.trim().take(3).uppercase()
+                }
+              },
+              label = { Text("Номи фан", fontSize = 11.sp) },
+              placeholder = { Text("Физика", fontSize = 12.sp) },
+              singleLine = true,
+              shape = RoundedCornerShape(8.dp),
+              modifier = Modifier
+                .weight(1.65f)
+                .testTag("teacher_subject_full_input")
+            )
+
+            OutlinedTextField(
+              value = shortSubjectText,
+              onValueChange = { newShort ->
+                if (newShort.length <= 4) {
+                  shortSubjectText = newShort.uppercase()
+                }
+              },
+              label = { Text("Кӯтоҳ (2-3 ҳ.)", fontSize = 10.5.sp) },
+              placeholder = { Text("ФИЗ", fontSize = 12.sp) },
+              singleLine = true,
+              shape = RoundedCornerShape(8.dp),
+              modifier = Modifier
+                .weight(1f)
+                .testTag("teacher_subject_short_input")
+            )
           }
         } else {
           // Free period: Just clean icon badge
@@ -1098,9 +1180,12 @@ fun TeacherLessonEditDialog(
     confirmButton = {
       Button(
         onClick = {
-          val finalSubject = if (isFree) "Соати озод" else subjectText.ifBlank { "Алгебра" }
+          val finalSubject = if (isFree) "Соати озод" else subjectText.trim().ifBlank { "Алгебра" }
+          val finalShort = if (isFree) "" else shortSubjectText.trim().ifBlank {
+            finalSubject.take(3).uppercase()
+          }
           val finalClass = if (isFree) "" else selectedClass
-          onSave(isFree, finalClass, finalSubject, "")
+          onSave(isFree, finalClass, finalSubject, finalShort, "")
         },
         colors = ButtonDefaults.buttonColors(
           containerColor = if (isFree) Color(0xFFD97706) else Navy800

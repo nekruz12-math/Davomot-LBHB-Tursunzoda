@@ -12,9 +12,12 @@ import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.export.XlsxReportGenerator
+import com.example.data.model.AcademicYearConfig
+import com.example.data.model.AppLanguage
 import com.example.data.model.AttendanceStatus
 import com.example.data.model.BellCountdownState
 import com.example.data.model.DailyInspiration
+import com.example.data.model.DisciplineNote
 import com.example.data.model.FontScaleOption
 import com.example.data.model.PicnicData
 import com.example.data.model.ReportPeriodMode
@@ -56,6 +59,7 @@ private const val TAG = "AttendanceViewModel"
 enum class AppScreen {
   HOME,
   ATTENDANCE,
+  DISCIPLINE,
   SCHEDULE,
   REPORTS,
   SETTINGS
@@ -67,7 +71,8 @@ enum class SettingsSubScreen {
   CLASSES,
   STUDENT_PROFILES,
   PICNIC,
-  SCHEDULE
+  SCHEDULE,
+  ACADEMIC_YEAR
 }
 
 data class AttendanceUiState(
@@ -100,6 +105,11 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
   val picnicData: StateFlow<PicnicData> = repository.picnicDataFlow
   val dailyInspiration: StateFlow<DailyInspiration> = repository.dailyInspirationFlow
   val teacherSchedule: StateFlow<List<TeacherLesson>> = repository.teacherScheduleFlow
+  val academicYearConfig: StateFlow<AcademicYearConfig> = repository.academicYearConfigFlow
+  val appLanguage: StateFlow<AppLanguage> = repository.appLanguageFlow
+  val disciplineNotes: StateFlow<List<DisciplineNote>> = repository.disciplineNotesFlow
+  val customDisciplineCategories: StateFlow<List<String>> = repository.customDisciplineCategoriesFlow
+  val defaultDisciplineCategories: List<String> = repository.defaultDisciplineCategories
 
   private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
   private val yearMonthFormat = SimpleDateFormat("yyyy-MM", Locale.US)
@@ -625,20 +635,103 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     isFreePeriod: Boolean,
     className: String,
     subject: String,
+    shortSubject: String = "",
     note: String = ""
   ) {
+    val cleanSubj = subject.trim()
+    val cleanShort = shortSubject.trim().ifBlank {
+      when {
+        cleanSubj.equals("Алгебра", ignoreCase = true) -> "А"
+        cleanSubj.equals("Геометрия", ignoreCase = true) -> "Г"
+        cleanSubj.contains("тарбияв", ignoreCase = true) -> "С.Т"
+        else -> cleanSubj.take(3).uppercase()
+      }
+    }
     repository.saveTeacherLesson(
       TeacherLesson(
         dayOfWeek = dayOfWeek,
         period = period,
         isFreePeriod = isFreePeriod,
         className = className.trim(),
-        subject = subject.trim(),
+        subject = cleanSubj,
+        shortSubject = cleanShort,
         note = note.trim()
       )
     )
     viewModelScope.launch {
       _toastEvent.emit(if (isFreePeriod) "Соати озод гузошта шуд ☕" else "Дарс дар «Ҷадвали ман» сабт шуд 📚")
+    }
+  }
+
+  fun updateAcademicYearConfig(config: AcademicYearConfig) {
+    repository.updateAcademicYearConfig(config)
+    viewModelScope.launch {
+      _toastEvent.emit("Соли хониш ва санаҳои чорякҳо захира шуданд ✅")
+    }
+  }
+
+  fun setAppLanguage(language: AppLanguage) {
+    repository.setAppLanguage(language)
+    viewModelScope.launch {
+      val msg = when (language) {
+        AppLanguage.TJ -> "Забони барнома: Тоҷикӣ 🇹🇯"
+        AppLanguage.RU -> "Язык приложения: Русский 🇷🇺"
+        AppLanguage.EN -> "App language: English 🇬🇧"
+      }
+      _toastEvent.emit(msg)
+    }
+  }
+
+  fun saveDisciplineNote(
+    noteId: String? = null,
+    studentId: String,
+    studentName: String,
+    dateStr: String,
+    category: String,
+    comment: String
+  ) {
+    val classId = getEffectiveSelectedClassId()
+    val note = DisciplineNote(
+      id = noteId ?: java.util.UUID.randomUUID().toString(),
+      classId = classId,
+      studentId = studentId,
+      studentName = studentName.trim(),
+      dateStr = dateStr,
+      category = category.trim(),
+      comment = comment.trim()
+    )
+    repository.saveDisciplineNote(note)
+    viewModelScope.launch {
+      _toastEvent.emit("Қайди интизом сабт шуд ✅")
+    }
+  }
+
+  fun deleteDisciplineNote(noteId: String) {
+    repository.deleteDisciplineNote(noteId)
+    viewModelScope.launch {
+      _toastEvent.emit("Қайди интизом нест карда шуд")
+    }
+  }
+
+  fun addCustomDisciplineCategory(categoryName: String) {
+    val clean = categoryName.trim()
+    if (clean.isBlank()) return
+    repository.addCustomDisciplineCategory(clean)
+    viewModelScope.launch {
+      _toastEvent.emit("Категорияи «$clean» илова шуд")
+    }
+  }
+
+  fun shiftSelectedDateByDays(deltaDays: Int) {
+    try {
+      val cal = Calendar.getInstance()
+      val parsed = dateFormat.parse(_uiState.value.selectedDate) ?: Date()
+      cal.time = parsed
+      cal.add(Calendar.DAY_OF_MONTH, deltaDays)
+      val nextDateStr = dateFormat.format(cal.time)
+      _uiState.value = _uiState.value.copy(selectedDate = nextDateStr)
+    } catch (e: Exception) {
+      e.printStackTrace()
     }
   }
 

@@ -143,4 +143,45 @@ class ExampleUnitTest {
     org.junit.Assert.assertNotEquals(day1.poemLines, day2.poemLines)
     org.junit.Assert.assertNotEquals(day2.poemLines, day3.poemLines)
   }
+
+  @Test
+  fun testAcademicYearQuartersAndSemesters() {
+    val config = com.example.data.model.AcademicYearConfig(
+      schoolYearName = "2026-2027",
+      q1Start = "2026-09-01",
+      q1End = "2026-10-31",
+      q2Start = "2026-11-10",
+      q2End = "2026-12-30",
+      q3Start = "2027-01-11",
+      q3End = "2027-03-20",
+      q4Start = "2027-04-01",
+      q4End = "2027-06-07"
+    )
+    assertEquals(1, config.getQuarterForDate("2026-09-15"))
+    assertEquals(1, config.getSemesterForDate("2026-09-15"))
+
+    assertEquals(2, config.getQuarterForDate("2026-11-13"))
+    assertEquals(1, config.getSemesterForDate("2026-11-13"))
+
+    assertEquals(3, config.getQuarterForDate("2027-02-10"))
+    assertEquals(2, config.getSemesterForDate("2027-02-10"))
+
+    assertEquals(4, config.getQuarterForDate("2027-05-05"))
+    assertEquals(2, config.getSemesterForDate("2027-05-05"))
+  }
+
+  @Test
+  fun testAppLanguageStringsCatalog() {
+    val tj = com.example.ui.AppStringsCatalog.forLanguage(com.example.data.model.AppLanguage.TJ)
+    val ru = com.example.ui.AppStringsCatalog.forLanguage(com.example.data.model.AppLanguage.RU)
+    val en = com.example.ui.AppStringsCatalog.forLanguage(com.example.data.model.AppLanguage.EN)
+
+    assertEquals("Интизом", tj.navDiscipline)
+    assertEquals("Дисциплина", ru.navDiscipline)
+    assertEquals("Discipline", en.navDiscipline)
+
+    assertEquals("Ч", tj.quarterPrefix)
+    assertEquals("Ч", ru.quarterPrefix)
+    assertEquals("Q", en.quarterPrefix)
+  }
 }

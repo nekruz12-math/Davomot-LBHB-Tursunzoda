@@ -1093,14 +1093,19 @@ fun TeacherTodayScheduleCard(
           val hasLesson = lesson != null && !isFree
           val isActivePeriod = periodNum == scheduleState.highlightedPeriod
 
-          val shortSubject = remember(lesson?.subject) {
-            val s = lesson?.subject?.trim() ?: ""
-            when {
-              s.equals("Алгебра", ignoreCase = true) || s.equals("А", ignoreCase = true) -> "А"
-              s.equals("Геометрия", ignoreCase = true) || s.equals("Г", ignoreCase = true) -> "Г"
-              s.contains("тарбияв", ignoreCase = true) || s.equals("С.Т", ignoreCase = true) -> "С.Т"
-              s.isNotEmpty() -> s.take(3)
-              else -> ""
+          val shortSubject = remember(lesson?.subject, lesson?.shortSubject) {
+            val explicitShort = lesson?.shortSubject?.trim().orEmpty()
+            if (explicitShort.isNotEmpty()) {
+              explicitShort
+            } else {
+              val s = lesson?.subject?.trim() ?: ""
+              when {
+                s.equals("Алгебра", ignoreCase = true) || s.equals("А", ignoreCase = true) -> "А"
+                s.equals("Геометрия", ignoreCase = true) || s.equals("Г", ignoreCase = true) -> "Г"
+                s.contains("тарбияв", ignoreCase = true) || s.equals("С.Т", ignoreCase = true) -> "С.Т"
+                s.isNotEmpty() -> s.take(3).uppercase()
+                else -> ""
+              }
             }
           }
 

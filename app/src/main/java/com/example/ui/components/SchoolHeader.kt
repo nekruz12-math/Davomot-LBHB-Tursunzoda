@@ -112,6 +112,7 @@ fun SchoolHeader(
   periodNumber: Int,
   bellCountdown: BellCountdownState,
   isDarkMode: Boolean,
+  appStrings: com.example.ui.AppStrings = com.example.ui.AppStringsCatalog.forLanguage(com.example.data.model.AppLanguage.TJ),
   showSelectors: Boolean = true,
   showSearchIcon: Boolean = false,
   onSearchClick: () -> Unit = {},
@@ -217,7 +218,7 @@ fun SchoolHeader(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
       ) {
         HeaderButton(
-          label = "Синф",
+          label = appStrings.headerClass,
           value = className,
           icon = Icons.Default.Class,
           isDarkMode = isDarkMode,
@@ -227,7 +228,7 @@ fun SchoolHeader(
         )
 
         HeaderButton(
-          label = "Сана",
+          label = appStrings.headerDate,
           value = formattedDate,
           icon = Icons.Default.CalendarMonth,
           isDarkMode = isDarkMode,
@@ -237,8 +238,8 @@ fun SchoolHeader(
         )
 
         HeaderButton(
-          label = "Соат",
-          value = "$periodNumber-дарс",
+          label = appStrings.headerPeriod,
+          value = "$periodNumber${appStrings.periodSuffix}",
           icon = Icons.Default.Schedule,
           isDarkMode = isDarkMode,
           testTag = "header_period_button",

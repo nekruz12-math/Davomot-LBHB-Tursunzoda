@@ -93,11 +93,14 @@ fun AttendanceScreen(
   currentPeriodAttendanceMap: Map<String, String>,
   isCurrentPeriodConfirmed: Boolean,
   smsTemplate: String,
+  academicYearConfig: com.example.data.model.AcademicYearConfig = com.example.data.model.AcademicYearConfig(),
+  appStrings: com.example.ui.AppStrings = com.example.ui.AppStringsCatalog.forLanguage(com.example.data.model.AppLanguage.TJ),
   isDarkMode: Boolean,
   fontScale: Float,
   searchQuery: String,
   isSearchVisible: Boolean = false,
   onPeriodSelected: (Int) -> Unit,
+  onQuarterSelected: (Int) -> Unit = {},
   onSearchQueryChanged: (String) -> Unit,
   onCloseSearch: () -> Unit = {},
   onConfirmPeriodAttendance: () -> Unit,
@@ -172,135 +175,173 @@ fun AttendanceScreen(
       .fillMaxSize()
       .background(screenBg)
   ) {
-    // 1. Schedule Box & Live Stats (Shown ONLY for Homeroom class)
-    if (isHomeroom) {
-      Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = surfaceBg,
-        shadowElevation = 2.dp
-      ) {
+    val activeQuarter = remember(selectedDate, academicYearConfig) {
+      academicYearConfig.getQuarterForDate(selectedDate)
+    }
+    val activeSemester = remember(activeQuarter, academicYearConfig) {
+      academicYearConfig.getSemesterForQuarter(activeQuarter)
+    }
+
+    // 1. Quarter & Semester Bar + Schedule Box (without Ҷамъ/Ҳозир/СБ/БСБ)
+    Surface(
+      modifier = Modifier.fillMaxWidth(),
+      color = surfaceBg,
+      shadowElevation = 2.dp
+    ) {
       Column(
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = 12.dp, vertical = 6.dp)
       ) {
-        if (isSunday) {
-          Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .clip(RoundedCornerShape(10.dp))
-              .background(Color(0xFFDCFCE7))
-              .border(1.dp, Color(0xFF22C55E), RoundedCornerShape(10.dp))
-              .padding(horizontal = 12.dp, vertical = 6.dp)
-          ) {
-            Text(
-              text = "🌴 Имрӯз рӯзи Якшанбе — рӯзи истироҳатӣ аст (дарс нест)",
-              fontSize = (13 * fontScale).sp,
-              fontWeight = FontWeight.ExtraBold,
-              color = Color(0xFF14532D)
-            )
-          }
-        } else {
-          Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-          ) {
-            Text(
-              text = "$dayName • Соати $selectedPeriod:",
-              fontSize = (13.5f * fontScale).sp,
-              color = secondaryText,
-              fontWeight = FontWeight.Bold
-            )
-            Text(
-              text = currentSubject,
-              fontSize = (14f * fontScale).sp,
-              color = if (isDarkMode) Gold500 else Navy800,
-              fontWeight = FontWeight.ExtraBold,
-              maxLines = 1
-            )
-          }
-
-          Spacer(modifier = Modifier.height(3.dp))
-
-          // Horizontal Subject Badges
-          if (todaySchedule.isNotEmpty()) {
-            LazyRow(
-              horizontalArrangement = Arrangement.spacedBy(6.dp),
-              contentPadding = PaddingValues(vertical = 1.dp)
-            ) {
-              itemsIndexed(todaySchedule) { idx, subj ->
-                val periodNum = idx + 1
-                val isSelected = periodNum == selectedPeriod
-                Box(
-                  modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                      when {
-                        isSelected -> Navy800
-                        isDarkMode -> Color(0xFF334155)
-                        else -> Color(0xFFF1F5F9)
-                      }
-                    )
-                    .border(
-                      width = 1.dp,
-                      color = if (isSelected) Gold500 else Color(0xFF94A3B8),
-                      shape = RoundedCornerShape(8.dp)
-                    )
-                    .clickable { onPeriodSelected(periodNum) }
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                  Text(
-                    text = "$periodNum. $subj",
-                    fontSize = (12f * fontScale).sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                    color = if (isSelected || isDarkMode) Color.White else Color(0xFF1E293B)
-                  )
-                }
-              }
-            }
-          } else {
-            Text(
-              text = "Ҷадвали дарсҳо барои рӯзи $dayName ворид нашудааст",
-              fontSize = (12f * fontScale).sp,
-              color = secondaryText,
-              fontWeight = FontWeight.Medium,
-              modifier = Modifier.padding(vertical = 2.dp)
-            )
-          }
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Summary Chips Row
+        // Quarter (Ч1, Ч2, Ч3, Ч4) + Semester (Нимсолаи 1 / 2) row matching photo 2
         Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = if (isHomeroom) 6.dp else 2.dp),
+          horizontalArrangement = Arrangement.SpaceBetween,
           verticalAlignment = Alignment.CenterVertically
         ) {
-          StatBadge(
-            label = "Ҷамъ: ${students.size}",
-            color = Color(0xFF1E293B),
-            bgColor = Color(0xFFE2E8F0)
-          )
-          StatBadge(
-            label = "Ҳозир: $presentCount",
-            color = Color(0xFF0F766E),
-            bgColor = Color(0xFFCCFBF1)
-          )
-          StatBadge(
-            label = "СБ: $sbCount",
-            color = Color(0xFF15803D),
-            bgColor = Color(0xFFDCFCE7)
-          )
-          StatBadge(
-            label = "БСБ: $bsbCount",
-            color = Color(0xFFB91C1C),
-            bgColor = Color(0xFFFEE2E2)
-          )
+          Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            for (qNum in 1..4) {
+              val isQActive = qNum == activeQuarter
+              Box(
+                modifier = Modifier
+                  .clip(RoundedCornerShape(9.dp))
+                  .background(
+                    when {
+                      isQActive -> Color(0xFF1D4ED8)
+                      isDarkMode -> Color(0xFF334155)
+                      else -> Color(0xFFF1F5F9)
+                    }
+                  )
+                  .clickable { onQuarterSelected(qNum) }
+                  .padding(horizontal = 11.dp, vertical = 6.dp)
+                  .testTag("quarter_badge_$qNum"),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = "${appStrings.quarterPrefix}$qNum",
+                  fontSize = 12.5.sp,
+                  fontWeight = FontWeight.ExtraBold,
+                  color = when {
+                    isQActive -> Color.White
+                    isDarkMode -> Color(0xFFE2E8F0)
+                    else -> Color(0xFF1E293B)
+                  }
+                )
+              }
+            }
+          }
+
+          Box(
+            modifier = Modifier
+              .clip(RoundedCornerShape(8.dp))
+              .background(
+                if (isDarkMode) Color(0xFF1E3A8A).copy(alpha = 0.45f) else Color(0xFFEFF6FF)
+              )
+              .padding(horizontal = 10.dp, vertical = 5.dp)
+              .testTag("semester_badge")
+          ) {
+            Text(
+              text = if (activeSemester == 1) appStrings.semester1 else appStrings.semester2,
+              fontSize = 12.5.sp,
+              fontWeight = FontWeight.Bold,
+              color = if (isDarkMode) Color(0xFF93C5FD) else Color(0xFF2563EB)
+            )
+          }
+        }
+
+        if (isHomeroom) {
+          if (isSunday) {
+            Box(
+              modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(Color(0xFFDCFCE7))
+                .border(1.dp, Color(0xFF22C55E), RoundedCornerShape(10.dp))
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+              Text(
+                text = "🌴 Имрӯз рӯзи Якшанбе — рӯзи истироҳатӣ аст (дарс нест)",
+                fontSize = (13 * fontScale).sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF14532D)
+              )
+            }
+          } else {
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              verticalAlignment = Alignment.CenterVertically,
+              horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+              Text(
+                text = "$dayName • Соати $selectedPeriod:",
+                fontSize = (13.5f * fontScale).sp,
+                color = secondaryText,
+                fontWeight = FontWeight.Bold
+              )
+              Text(
+                text = currentSubject,
+                fontSize = (14f * fontScale).sp,
+                color = if (isDarkMode) Gold500 else Navy800,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1
+              )
+            }
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            // Horizontal Subject Badges
+            if (todaySchedule.isNotEmpty()) {
+              LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                contentPadding = PaddingValues(vertical = 1.dp)
+              ) {
+                itemsIndexed(todaySchedule) { idx, subj ->
+                  val periodNum = idx + 1
+                  val isSelected = periodNum == selectedPeriod
+                  Box(
+                    modifier = Modifier
+                      .clip(RoundedCornerShape(8.dp))
+                      .background(
+                        when {
+                          isSelected -> Navy800
+                          isDarkMode -> Color(0xFF334155)
+                          else -> Color(0xFFF1F5F9)
+                        }
+                      )
+                      .border(
+                        width = 1.dp,
+                        color = if (isSelected) Gold500 else Color(0xFF94A3B8),
+                        shape = RoundedCornerShape(8.dp)
+                      )
+                      .clickable { onPeriodSelected(periodNum) }
+                      .padding(horizontal = 10.dp, vertical = 4.dp)
+                  ) {
+                    Text(
+                      text = "$periodNum. $subj",
+                      fontSize = (12f * fontScale).sp,
+                      fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                      color = if (isSelected || isDarkMode) Color.White else Color(0xFF1E293B)
+                    )
+                  }
+                }
+              }
+            } else {
+              Text(
+                text = "Ҷадвали дарсҳо барои рӯзи $dayName ворид нашудааст",
+                fontSize = (12f * fontScale).sp,
+                color = secondaryText,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(vertical = 2.dp)
+              )
+            }
+          }
         }
       }
-    }
     }
 
     // 2. Collapsible Search Bar (revealed via Search Icon in SchoolHeader)

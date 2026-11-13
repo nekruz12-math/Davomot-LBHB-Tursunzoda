@@ -16,7 +16,58 @@ data class TeacherLesson(
   val isFreePeriod: Boolean = false, // true = Соати озод (тиреза)
   val className: String = "", // e.g. "10 \"А\""
   val subject: String = "", // e.g. "Физика"
+  val shortSubject: String = "", // e.g. "ФИЗ" (2-3 letters)
   val note: String = ""
+)
+
+enum class AppLanguage(val code: String, val displayName: String, val flagBadge: String) {
+  TJ("TJ", "Тоҷикӣ", "ТҶ"),
+  RU("RU", "Русский", "РУ"),
+  EN("EN", "English", "EN")
+}
+
+data class AcademicYearConfig(
+  val schoolYearName: String = "2026-2027",
+  val q1Start: String = "2026-09-01",
+  val q1End: String = "2026-10-31",
+  val q2Start: String = "2026-11-11",
+  val q2End: String = "2026-12-31",
+  val q3Start: String = "2027-01-11",
+  val q3End: String = "2027-03-20",
+  val q4Start: String = "2027-04-01",
+  val q4End: String = "2027-06-14"
+) {
+  fun getQuarterForDate(dateStr: String): Int {
+    return when {
+      dateStr in q1Start..q1End -> 1
+      dateStr in q2Start..q2End -> 2
+      dateStr in q3Start..q3End -> 3
+      dateStr in q4Start..q4End -> 4
+      dateStr < q2Start -> 1
+      dateStr < q3Start -> 2
+      dateStr < q4Start -> 3
+      else -> 4
+    }
+  }
+
+  fun getSemesterForQuarter(quarter: Int): Int {
+    return if (quarter <= 2) 1 else 2
+  }
+
+  fun getSemesterForDate(dateStr: String): Int {
+    return getSemesterForQuarter(getQuarterForDate(dateStr))
+  }
+}
+
+data class DisciplineNote(
+  val id: String = java.util.UUID.randomUUID().toString(),
+  val classId: String,
+  val studentId: String,
+  val studentName: String,
+  val dateStr: String, // "yyyy-MM-dd"
+  val category: String,
+  val comment: String = "",
+  val createdAt: Long = System.currentTimeMillis()
 )
 
 fun parseAttendanceCode(rawCode: String?): Triple<AttendanceStatus, Int, String> {

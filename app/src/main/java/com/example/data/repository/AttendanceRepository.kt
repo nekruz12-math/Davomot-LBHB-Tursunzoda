@@ -1,8 +1,11 @@
 package com.example.data.repository
 
 import android.content.Context
+import com.example.data.model.AcademicYearConfig
+import com.example.data.model.AppLanguage
 import com.example.data.model.AttendanceStatus
 import com.example.data.model.DailyInspiration
+import com.example.data.model.DisciplineNote
 import com.example.data.model.FontScaleOption
 import com.example.data.model.PicnicData
 import com.example.data.model.PicnicPlanItem
@@ -71,6 +74,27 @@ class AttendanceRepository(private val context: Context) {
 
   private val _teacherScheduleFlow = MutableStateFlow<List<TeacherLesson>>(emptyList())
   val teacherScheduleFlow: StateFlow<List<TeacherLesson>> = _teacherScheduleFlow.asStateFlow()
+
+  private val _academicYearConfigFlow = MutableStateFlow(AcademicYearConfig())
+  val academicYearConfigFlow: StateFlow<AcademicYearConfig> = _academicYearConfigFlow.asStateFlow()
+
+  private val _appLanguageFlow = MutableStateFlow(AppLanguage.TJ)
+  val appLanguageFlow: StateFlow<AppLanguage> = _appLanguageFlow.asStateFlow()
+
+  private val _disciplineNotesFlow = MutableStateFlow<List<DisciplineNote>>(emptyList())
+  val disciplineNotesFlow: StateFlow<List<DisciplineNote>> = _disciplineNotesFlow.asStateFlow()
+
+  val defaultDisciplineCategories = listOf(
+    "Либоси мактабӣ",
+    "Бе тайёрӣ ба дарс (вазифаи хонагӣ)",
+    "Халал расонидан дар дарс",
+    "Дермонӣ ба дарс",
+    "Истифодаи телефон дар дарс",
+    "Надоштани дафтар ё китоб",
+    "Дигар"
+  )
+  private val _customDisciplineCategoriesFlow = MutableStateFlow<List<String>>(emptyList())
+  val customDisciplineCategoriesFlow: StateFlow<List<String>> = _customDisciplineCategoriesFlow.asStateFlow()
 
   private val initialDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
   private val _dailyInspirationFlow = MutableStateFlow(TajikInspirationCatalog.getForDateString(initialDateStr))
@@ -280,11 +304,60 @@ class AttendanceRepository(private val context: Context) {
             isFreePeriod = tObj.optBoolean("isFreePeriod", false),
             className = tObj.optString("className", ""),
             subject = tObj.optString("subject", ""),
+            shortSubject = tObj.optString("shortSubject", ""),
             note = tObj.optString("note", "")
           )
         )
       }
       _teacherScheduleFlow.value = tList.sortedWith(compareBy({ it.dayOfWeek }, { it.period }))
+
+      // 10. Academic Year & Quarters Config
+      val acadObj = root.optJSONObject("academicYearConfig")
+      if (acadObj != null) {
+        _academicYearConfigFlow.value = AcademicYearConfig(
+          schoolYearName = acadObj.optString("schoolYearName", "2026-2027"),
+          q1Start = acadObj.optString("q1Start", "2026-09-01"),
+          q1End = acadObj.optString("q1End", "2026-10-31"),
+          q2Start = acadObj.optString("q2Start", "2026-11-11"),
+          q2End = acadObj.optString("q2End", "2026-12-31"),
+          q3Start = acadObj.optString("q3Start", "2027-01-11"),
+          q3End = acadObj.optString("q3End", "2027-03-20"),
+          q4Start = acadObj.optString("q4Start", "2027-04-01"),
+          q4End = acadObj.optString("q4End", "2027-06-14")
+        )
+      }
+
+      // 11. App Language
+      val langCode = root.optString("appLanguage", AppLanguage.TJ.code)
+      _appLanguageFlow.value = AppLanguage.entries.find { it.code == langCode } ?: AppLanguage.TJ
+
+      // 12. Discipline Notes & Custom Categories
+      val discArr = root.optJSONArray("disciplineNotes") ?: JSONArray()
+      val dList = mutableListOf<DisciplineNote>()
+      for (i in 0 until discArr.length()) {
+        val dObj = discArr.getJSONObject(i)
+        dList.add(
+          DisciplineNote(
+            id = dObj.optString("id", UUID.randomUUID().toString()),
+            classId = dObj.optString("classId", "1"),
+            studentId = dObj.optString("studentId", ""),
+            studentName = dObj.optString("studentName", ""),
+            dateStr = dObj.optString("dateStr", ""),
+            category = dObj.optString("category", ""),
+            comment = dObj.optString("comment", ""),
+            createdAt = dObj.optLong("createdAt", System.currentTimeMillis())
+          )
+        )
+      }
+      _disciplineNotesFlow.value = dList.sortedByDescending { it.createdAt }
+
+      val catArr = root.optJSONArray("customDisciplineCategories") ?: JSONArray()
+      val cList = mutableListOf<String>()
+      for (i in 0 until catArr.length()) {
+        val cName = catArr.optString(i, "").trim()
+        if (cName.isNotBlank()) cList.add(cName)
+      }
+      _customDisciplineCategoriesFlow.value = cList
 
       true
     } catch (e: Exception) {
@@ -563,10 +636,48 @@ class AttendanceRepository(private val context: Context) {
       tObj.put("isFreePeriod", t.isFreePeriod)
       tObj.put("className", t.className)
       tObj.put("subject", t.subject)
+      tObj.put("shortSubject", t.shortSubject)
       tObj.put("note", t.note)
       tArr.put(tObj)
     }
     root.put("teacherSchedule", tArr)
+
+    // Academic Year Config
+    val acad = _academicYearConfigFlow.value
+    val acadObj = JSONObject()
+    acadObj.put("schoolYearName", acad.schoolYearName)
+    acadObj.put("q1Start", acad.q1Start)
+    acadObj.put("q1End", acad.q1End)
+    acadObj.put("q2Start", acad.q2Start)
+    acadObj.put("q2End", acad.q2End)
+    acadObj.put("q3Start", acad.q3Start)
+    acadObj.put("q3End", acad.q3End)
+    acadObj.put("q4Start", acad.q4Start)
+    acadObj.put("q4End", acad.q4End)
+    root.put("academicYearConfig", acadObj)
+
+    // App Language
+    root.put("appLanguage", _appLanguageFlow.value.code)
+
+    // Discipline Notes
+    val dArr = JSONArray()
+    for (d in _disciplineNotesFlow.value) {
+      val dObj = JSONObject()
+      dObj.put("id", d.id)
+      dObj.put("classId", d.classId)
+      dObj.put("studentId", d.studentId)
+      dObj.put("studentName", d.studentName)
+      dObj.put("dateStr", d.dateStr)
+      dObj.put("category", d.category)
+      dObj.put("comment", d.comment)
+      dObj.put("createdAt", d.createdAt)
+      dArr.put(dObj)
+    }
+    root.put("disciplineNotes", dArr)
+
+    val catArr = JSONArray()
+    _customDisciplineCategoriesFlow.value.forEach { catArr.put(it) }
+    root.put("customDisciplineCategories", catArr)
 
     return root.toString(2)
   }
@@ -1102,6 +1213,43 @@ class AttendanceRepository(private val context: Context) {
         note = "Соати озод (тиреза)"
       )
     )
+  }
+
+  // --- Academic Year, Language & Discipline Notes ---
+
+  fun updateAcademicYearConfig(config: AcademicYearConfig) {
+    _academicYearConfigFlow.value = config
+    persistData()
+  }
+
+  fun setAppLanguage(language: AppLanguage) {
+    _appLanguageFlow.value = language
+    persistData()
+  }
+
+  fun saveDisciplineNote(note: DisciplineNote) {
+    val updated = _disciplineNotesFlow.value.filterNot { it.id == note.id }.toMutableList()
+    updated.add(0, note)
+    _disciplineNotesFlow.value = updated.sortedByDescending { it.createdAt }
+    persistData()
+  }
+
+  fun deleteDisciplineNote(noteId: String) {
+    _disciplineNotesFlow.value = _disciplineNotesFlow.value.filterNot { it.id == noteId }
+    persistData()
+  }
+
+  fun addCustomDisciplineCategory(categoryName: String) {
+    val clean = categoryName.trim()
+    if (clean.isBlank()) return
+    val current = _customDisciplineCategoriesFlow.value
+    if (defaultDisciplineCategories.any { it.equals(clean, ignoreCase = true) } ||
+      current.any { it.equals(clean, ignoreCase = true) }
+    ) {
+      return
+    }
+    _customDisciplineCategoriesFlow.value = listOf(clean) + current
+    persistData()
   }
 
   fun calculateReportForRange(

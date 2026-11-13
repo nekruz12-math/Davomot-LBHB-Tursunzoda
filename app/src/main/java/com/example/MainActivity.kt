@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.model.TajikDateUtils
 import com.example.ui.AppScreen
+import com.example.ui.AppStringsCatalog
 import com.example.ui.AttendanceViewModel
 import com.example.ui.SettingsSubScreen
 import com.example.ui.components.ClassPickerDialog
@@ -42,6 +43,7 @@ import com.example.ui.components.TajikCalendarDialog
 import com.example.ui.components.TelegramBottomBar
 import com.example.ui.components.WindowsSplashOverlay
 import com.example.ui.screens.attendance.AttendanceScreen
+import com.example.ui.screens.discipline.DisciplineScreen
 import com.example.ui.screens.home.HomeScreen
 import com.example.ui.screens.reports.ReportScreen
 import com.example.ui.screens.schedule.ScheduleScreen
@@ -89,6 +91,18 @@ fun AttendanceApp(
   val picnicData by viewModel.picnicData.collectAsStateWithLifecycle()
   val dailyInspiration by viewModel.dailyInspiration.collectAsStateWithLifecycle()
   val teacherSchedule by viewModel.teacherSchedule.collectAsStateWithLifecycle()
+  val academicYearConfig by viewModel.academicYearConfig.collectAsStateWithLifecycle()
+  val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+  val disciplineNotes by viewModel.disciplineNotes.collectAsStateWithLifecycle()
+  val customDisciplineCategories by viewModel.customDisciplineCategories.collectAsStateWithLifecycle()
+
+  val appStrings = remember(appLanguage, schoolName) {
+    AppStringsCatalog.forLanguage(appLanguage, schoolName)
+  }
+
+  val allDisciplineCategories = remember(customDisciplineCategories) {
+    (viewModel.defaultDisciplineCategories + customDisciplineCategories).distinct()
+  }
 
   var showSplash by rememberSaveable { mutableStateOf(true) }
   var showClassPicker by remember { mutableStateOf(false) }
@@ -242,7 +256,8 @@ fun AttendanceApp(
           periodNumber = uiState.selectedPeriod,
           bellCountdown = bellCountdown,
           isDarkMode = isDarkMode,
-          showSelectors = (uiState.currentScreen == AppScreen.ATTENDANCE),
+          appStrings = appStrings,
+          showSelectors = (uiState.currentScreen == AppScreen.ATTENDANCE || uiState.currentScreen == AppScreen.DISCIPLINE),
           showSearchIcon = (uiState.currentScreen == AppScreen.ATTENDANCE && currentClass?.students?.isNotEmpty() == true),
           onSearchClick = {
             isSearchExpanded = !isSearchExpanded
@@ -259,6 +274,7 @@ fun AttendanceApp(
         TelegramBottomBar(
           currentScreen = uiState.currentScreen,
           isDarkMode = isDarkMode,
+          appStrings = appStrings,
           onSelectScreen = { viewModel.setScreen(it) }
         )
       }
@@ -314,9 +330,23 @@ fun AttendanceApp(
                 smsTemplate = smsTemplate,
                 isDarkMode = isDarkMode,
                 fontScale = 1.0f,
+                academicYearConfig = academicYearConfig,
+                appStrings = appStrings,
                 searchQuery = uiState.searchQuery,
                 isSearchVisible = isSearchExpanded,
                 onPeriodSelected = { viewModel.selectPeriod(it) },
+                onQuarterSelected = { qNum ->
+                  val targetDate = when (qNum) {
+                    1 -> academicYearConfig.q1Start
+                    2 -> academicYearConfig.q2Start
+                    3 -> academicYearConfig.q3Start
+                    4 -> academicYearConfig.q4Start
+                    else -> uiState.selectedDate
+                  }
+                  if (academicYearConfig.getQuarterForDate(uiState.selectedDate) != qNum) {
+                    viewModel.selectDate(targetDate)
+                  }
+                },
                 onSearchQueryChanged = { viewModel.setSearchQuery(it) },
                 onCloseSearch = {
                   isSearchExpanded = false
@@ -331,6 +361,34 @@ fun AttendanceApp(
                 onRecordLate = { stId, mins -> viewModel.recordLateMinutes(stId, mins) },
                 onSaveSmsTemplate = { newTpl -> viewModel.updateSmsTemplate(newTpl) },
                 onNavigateToClasses = { viewModel.openClassesManagement() }
+              )
+            }
+
+            AppScreen.DISCIPLINE -> {
+              DisciplineScreen(
+                currentClass = currentClass,
+                selectedDate = uiState.selectedDate,
+                academicYearConfig = academicYearConfig,
+                disciplineNotes = disciplineNotes,
+                defaultCategories = viewModel.defaultDisciplineCategories,
+                customCategories = customDisciplineCategories,
+                appStrings = appStrings,
+                isDarkMode = isDarkMode,
+                onPrevDate = { viewModel.shiftSelectedDateByDays(-1) },
+                onNextDate = { viewModel.shiftSelectedDateByDays(1) },
+                onSelectDate = { viewModel.selectDate(it) },
+                onSaveNote = { noteId, stId, stName, dateStr, category, comment ->
+                  viewModel.saveDisciplineNote(
+                    noteId,
+                    stId,
+                    stName,
+                    dateStr,
+                    category,
+                    comment
+                  )
+                },
+                onDeleteNote = { viewModel.deleteDisciplineNote(it) },
+                onAddCustomCategory = { viewModel.addCustomDisciplineCategory(it) }
               )
             }
 
@@ -361,8 +419,8 @@ fun AttendanceApp(
                 onCopyDayToDay = { fromDay, toDay ->
                   viewModel.copyDayScheduleToDay(fromDay, toDay)
                 },
-                onSaveTeacherLesson = { dayOfWeek, period, isFree, className, subject, note ->
-                  viewModel.saveTeacherLesson(dayOfWeek, period, isFree, className, subject, note)
+                onSaveTeacherLesson = { dayOfWeek, period, isFree, className, subject, shortSubject, note ->
+                  viewModel.saveTeacherLesson(dayOfWeek, period, isFree, className, subject, shortSubject, note)
                 },
                 onDeleteTeacherLesson = { viewModel.deleteTeacherLesson(it) },
                 onSetTeacherPeriodFree = { dayOfWeek, period -> viewModel.setTeacherPeriodFree(dayOfWeek, period) }
@@ -402,8 +460,13 @@ fun AttendanceApp(
                 picnicData = picnicData,
                 selectedDate = uiState.selectedDate,
                 isDarkMode = isDarkMode,
+                academicYearConfig = academicYearConfig,
+                appLanguage = appLanguage,
+                appStrings = appStrings,
                 onSelectSubScreen = { viewModel.setSettingsSubScreen(it) },
                 onToggleDarkMode = { viewModel.toggleDarkMode() },
+                onUpdateAcademicYearConfig = { viewModel.updateAcademicYearConfig(it) },
+                onSelectLanguage = { viewModel.setAppLanguage(it) },
                 onUpdateSchoolName = { viewModel.updateSchoolName(it) },
                 onPickSchoolLogo = { ctx, uri -> viewModel.saveCustomSchoolLogoFromUri(ctx, uri) },
                 onResetSchoolBranding = { viewModel.resetSchoolBranding() },
@@ -453,8 +516,8 @@ fun AttendanceApp(
                   viewModel.copyDayScheduleToDay(fromDay, toDay)
                 },
                 teacherSchedule = teacherSchedule,
-                onSaveTeacherLesson = { dayOfWeek, period, isFree, className, subject, note ->
-                  viewModel.saveTeacherLesson(dayOfWeek, period, isFree, className, subject, note)
+                onSaveTeacherLesson = { dayOfWeek, period, isFree, className, subject, shortSubject, note ->
+                  viewModel.saveTeacherLesson(dayOfWeek, period, isFree, className, subject, shortSubject, note)
                 },
                 onDeleteTeacherLesson = { viewModel.deleteTeacherLesson(it) },
                 onSetTeacherPeriodFree = { dayOfWeek, period -> viewModel.setTeacherPeriodFree(dayOfWeek, period) }
