@@ -146,26 +146,12 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
   fun autoRefreshInspirationWithAi() {
     viewModelScope.launch {
       val today = dateFormat.format(Date())
-      try {
-        val current = dailyInspiration.value
-        // Each calendar day has exactly ONE quote and ONE poem, fixed and stable for the whole day
-        if (current.fetchedDate == today && current.quoteText.isNotBlank() && current.poemLines.isNotBlank()) {
-          return@launch
-        }
-
-        val cal = Calendar.getInstance()
-        val dayOfYear = cal.get(Calendar.DAY_OF_YEAR)
-        val year = cal.get(Calendar.YEAR)
-        val seed = year * 366 + dayOfYear
-        val inspiration = TajikInspirationCatalog.getFallbackForSeed(seed).copy(fetchedDate = today)
-        repository.updateDailyInspiration(inspiration)
-      } catch (e: Exception) {
-        val cal = Calendar.getInstance()
-        val dayOfYear = cal.get(Calendar.DAY_OF_YEAR)
-        val seed = cal.get(Calendar.YEAR) * 366 + dayOfYear
-        val inspiration = TajikInspirationCatalog.getFallbackForSeed(seed).copy(fetchedDate = today)
-        repository.updateDailyInspiration(inspiration)
+      val current = dailyInspiration.value
+      if (current.fetchedDate == today && current.quoteText.isNotBlank() && current.poemLines.isNotBlank()) {
+        return@launch
       }
+      val inspiration = TajikInspirationCatalog.getForDateString(today)
+      repository.updateDailyInspiration(inspiration)
     }
   }
 
@@ -179,6 +165,9 @@ class AttendanceViewModel(application: Application) : AndroidViewModel(applicati
     val state = _uiState.value
     val nowDateStr = dateFormat.format(Date())
     _bellCountdown.value = TajikDateUtils.getBellCountdownState()
+    if (dailyInspiration.value.fetchedDate != nowDateStr) {
+      repository.updateDailyInspiration(TajikInspirationCatalog.getForDateString(nowDateStr))
+    }
     if (state.selectedDate == nowDateStr) {
       val maxPeriods = repository.getMaxPeriodsForDate(getEffectiveSelectedClassId(state), state.selectedDate)
       val autoP = TajikDateUtils.getAutoPeriodByCurrentTime(maxPeriods)

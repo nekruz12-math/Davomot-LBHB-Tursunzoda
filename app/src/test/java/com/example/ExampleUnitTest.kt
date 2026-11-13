@@ -122,4 +122,25 @@ class ExampleUnitTest {
     assertTrue(sheetXml.contains("СБ (соат)"))
     assertTrue(sheetXml.contains("БСБ (рӯзи пурра)"))
   }
+
+  @Test
+  fun testDailyInspirationUniquePerConsecutiveDays() {
+    assertEquals(40, com.example.data.model.TajikInspirationCatalog.QUOTES.distinct().size)
+    assertEquals(40, com.example.data.model.TajikInspirationCatalog.POEMS.distinct().size)
+
+    val day1 = com.example.data.model.TajikInspirationCatalog.getForDateString("2026-11-13")
+    val day2 = com.example.data.model.TajikInspirationCatalog.getForDateString("2026-11-14")
+    val day3 = com.example.data.model.TajikInspirationCatalog.getForDateString("2026-11-15")
+
+    // Calling again on the same date returns the exact same quote and poem
+    val day1Repeat = com.example.data.model.TajikInspirationCatalog.getForDateString("2026-11-13")
+    assertEquals(day1.quoteText, day1Repeat.quoteText)
+    assertEquals(day1.poemLines, day1Repeat.poemLines)
+
+    // Consecutive days never repeat
+    org.junit.Assert.assertNotEquals(day1.quoteText, day2.quoteText)
+    org.junit.Assert.assertNotEquals(day2.quoteText, day3.quoteText)
+    org.junit.Assert.assertNotEquals(day1.poemLines, day2.poemLines)
+    org.junit.Assert.assertNotEquals(day2.poemLines, day3.poemLines)
+  }
 }

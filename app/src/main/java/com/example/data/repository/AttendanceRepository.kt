@@ -72,11 +72,11 @@ class AttendanceRepository(private val context: Context) {
   private val _teacherScheduleFlow = MutableStateFlow<List<TeacherLesson>>(emptyList())
   val teacherScheduleFlow: StateFlow<List<TeacherLesson>> = _teacherScheduleFlow.asStateFlow()
 
-  private val initialSeed = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
-  private val _dailyInspirationFlow = MutableStateFlow(TajikInspirationCatalog.getFallbackForSeed(initialSeed))
+  private val initialDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
+  private val _dailyInspirationFlow = MutableStateFlow(TajikInspirationCatalog.getForDateString(initialDateStr))
   val dailyInspirationFlow: StateFlow<DailyInspiration> = _dailyInspirationFlow.asStateFlow()
 
-  private var rotationCounter: Int = initialSeed
+  private var rotationCounter: Int = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
 
   init {
     loadData()
@@ -263,10 +263,9 @@ class AttendanceRepository(private val context: Context) {
         _picnicDataFlow.value = PicnicData(pDate, pNotes, pItems)
       }
 
-      // 8. Daily Inspiration rotation
-      rotationCounter = (root.optInt("rotationCounter", initialSeed) + 1)
-      val fallback = TajikInspirationCatalog.getFallbackForSeed(rotationCounter)
-      _dailyInspirationFlow.value = fallback
+      // 8. Daily Inspiration (strictly 1 unique quote & poem per calendar day)
+      val todayDateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(java.util.Date())
+      _dailyInspirationFlow.value = TajikInspirationCatalog.getForDateString(todayDateStr)
 
       // 9. Teacher Schedule
       val teacherSchedArr = root.optJSONArray("teacherSchedule") ?: JSONArray()
